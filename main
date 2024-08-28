@@ -1,0 +1,14 @@
+class Veiculo:
+    def __init__(self, placa, modelo, ano):
+        self.placa = placa
+        self.modelo = modelo
+        self.ano = ano
+
+    def exibir_informacoes(self):
+        print(f"Placa: {self.placa}")
+        print(f"Modelo: {self.modelo}")
+        print(f"Ano: {self.ano}")
+
+# Criando um objeto da classe Veiculo
+carro = Veiculo("ABC1234", "Gol", 2020)
+carro.exibir_informacoes()
