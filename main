@@ -1,14 +1,121 @@
-class Veiculo:
-    def __init__(self, placa, modelo, ano):
-        self.placa = placa
-        self.modelo = modelo
-        self.ano = ano
+import time
+import random
+import requests
+import json
+from datetime import datetime
 
-    def exibir_informacoes(self):
-        print(f"Placa: {self.placa}")
-        print(f"Modelo: {self.modelo}")
-        print(f"Ano: {self.ano}")
+class Sensor:
+    def __init__(self, name):
+        self.name = name
 
-# Criando um objeto da classe Veiculo
-carro = Veiculo("ABC1234", "Gol", 2020)
-carro.exibir_informacoes()
+    def get_data(self):
+        raise NotImplementedError("Este método deve ser implementado pela subclasse.")
+
+class VelocidadeSensor(Sensor):
+    def __init__(self):
+        super().__init__('Velocidade Média')
+
+    def get_data(self):
+        # Simulação de leitura de sensor de velocidade média
+        return random.uniform(60, 120)  # km/h
+
+class FluxoVeiculosSensor(Sensor):
+    def __init__(self):
+        super().__init__('Fluxo de Veículos')
+
+    def get_data(self):
+        # Simulação de leitura de sensor de fluxo de veículos
+        return random.randint(200, 500)  # veículos por hora
+
+class ClimaSensor(Sensor):
+    def __init__(self):
+        super().__init__('Condições Climáticas')
+
+    def get_data(self):
+        # Simulação de leitura de sensor de clima (chuva leve, moderada, forte)
+        clima = ['Ensolarado', 'Nublado', 'Chuva leve', 'Chuva forte']
+        return random.choice(clima)
+
+class IoTSystem:
+    def __init__(self):
+        self.sensors = []
+        self.cloud_url = "https://api.plataforma-cloud.com/rodoanel"
+        self.local_backup_file = 'backup_data.json'
+
+    def add_sensor(self, sensor):
+        self.sensors.append(sensor)
+
+    def collect_data(self):
+        # Coleta dados de todos os sensores
+        data = {'timestamp': str(datetime.now())}
+        for sensor in self.sensors:
+            data[sensor.name] = sensor.get_data()
+        return data
+
+    def validate_data(self, data):
+        # Validação simples para garantir que os dados são razoáveis
+        if data['Velocidade Média'] < 0 or data['Velocidade Média'] > 200:
+            return False
+        if data['Fluxo de Veículos'] < 0:
+            return False
+        return True
+
+    def save_local_backup(self, data):
+        # Salva os dados localmente em um arquivo JSON, em caso de falha no envio para a nuvem
+        try:
+            with open(self.local_backup_file, 'a') as backup_file:
+                backup_file.write(json.dumps(data) + '\n')
+            print("Backup local salvo.")
+        except Exception as e:
+            print(f"Erro ao salvar o backup local: {e}")
+
+    def send_to_cloud(self, data):
+        try:
+            response = requests.post(self.cloud_url, json=data)
+            if response.status_code == 200:
+                print("Dados enviados com sucesso para a nuvem!")
+            else:
+                print(f"Erro ao enviar dados para a nuvem: {response.status_code}")
+                self.save_local_backup(data)
+        except requests.exceptions.RequestException as e:
+            print(f"Erro de conexão: {e}")
+            self.save_local_backup(data)
+
+    def check_critical_conditions(self, data):
+        # Enviar um alerta caso condições críticas sejam detectadas
+        if data['Velocidade Média'] > 100:
+            print("Alerta: Velocidade média muito alta!")
+        if data['Fluxo de Veículos'] > 400:
+            print("Alerta: Fluxo de veículos muito alto!")
+        if data['Condições Climáticas'] == 'Chuva forte':
+            print("Alerta: Chuva forte detectada!")
+
+    def run(self, interval=300):
+        # Loop de monitoramento
+        while True:
+            data = self.collect_data()
+            print(f"Dados coletados: {data}")
+
+            # Validação e envio
+            if self.validate_data(data):
+                self.send_to_cloud(data)
+            else:
+                print("Dados inválidos, não enviados.")
+
+            # Verificar condições críticas
+            self.check_critical_conditions(data)
+
+            # Aguardar antes da próxima coleta
+            time.sleep(interval)
+
+
+# Inicialização do sistema IoT
+iot_system = IoTSystem()
+
+# Adicionar sensores ao sistema
+iot_system.add_sensor(VelocidadeSensor())
+iot_system.add_sensor(FluxoVeiculosSensor())
+iot_system.add_sensor(ClimaSensor())
+
+# Executar o sistema de monitoramento
+iot_system.run()
